@@ -1,0 +1,433 @@
+<html>
+
+<head>
+<title>ray tracing &mdash; training</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+
+<script id="rayTracing-fragmentShader" type="fragment">
+	precision highp float;
+	
+	varying vec3 rayDirection;
+	varying vec3 rayOrigin;
+	
+	uniform vec3 pointLightPosition;
+	uniform vec3 pointLightColor;
+	
+	uniform vec3 sphere1;
+	uniform vec3 sphere2;
+	uniform vec3 sphere3;
+	uniform vec3 sphere4;
+	
+	struct Ray
+	{
+		vec3 	origin;
+		vec3 	direction;
+		int 	depth;
+	};
+	
+	struct Material
+	{
+		vec3 	color;
+		float 	reflectance;
+	};
+	
+	struct Hit
+	{
+		vec3 		position;
+		vec3 		normal;
+		float 		dist;
+		Material 	material;
+	};
+	
+	struct Plane
+	{
+		vec3 		normal;
+		float 		base;
+		Material    material;
+	};
+	
+	Plane planes;
+	
+	struct Sphere
+	{
+		vec3 		center;
+		float 		radius;
+		Material 	material;
+	};
+	
+	Sphere spheres[5];
+	
+	const float EPSILON = 0.0001;
+	const float INFINITY = 100000.0;
+	const int MAX_DEPTH = 3;
+	
+	Ray initRay()
+	{
+		Ray r;
+		r.origin = rayOrigin;
+		r.direction = normalize(rayDirection);
+		r.depth = 0;
+		
+		return r;
+	}
+	
+	
+	
+	void initScene()
+	{
+	
+		spheres[0].center = vec3(0.0, 0.0, -3.0);
+		spheres[0].radius = 0.3;
+		spheres[0].material.color = vec3(0.2, 1.0, 0.2);
+		spheres[0].material.reflectance = 0.2;
+	
+		spheres[1].center = sphere1;
+		spheres[1].radius = 0.10;
+		spheres[1].material.color = vec3(0.60, 0.0, 0.80);
+		spheres[1].material.reflectance = 0.2;
+
+		spheres[2].center = sphere2;
+		spheres[2].radius = 0.10;
+		spheres[2].material.color = vec3(0.0, 0.60, 0.8);
+		spheres[2].material.reflectance = 0.2;
+
+		spheres[3].center = sphere3;
+		spheres[3].radius = 0.10;
+		spheres[3].material.color = vec3(0.7, 0.8, 0.0);
+		spheres[3].material.reflectance = 0.2;
+
+		spheres[4].center = sphere4;
+		spheres[4].radius = 0.10;
+		spheres[4].material.color = vec3(0.7, 0.0, 0.0);
+		spheres[4].material.reflectance = 0.2;
+
+		planes.base = -0.7;
+		planes.normal = vec3(0.0,1.0,0.0);
+		planes.material.color = vec3(0.6,0.6,0.6);
+		planes.material.reflectance = 0.2;
+	}
+	
+	float intersectSphere(in Ray ray, in Sphere sphere)
+	{
+		float b= 2.0*dot(sphere.center-ray.origin,ray.direction);
+		float c= dot(sphere.center-ray.origin,sphere.center-ray.origin)-sphere.radius * sphere.radius;
+		float distanceInSphere= b*b - 4.0*c;
+		
+		if(distanceInSphere < 0.0){
+			return -1.0;
+		}
+		
+		float distance= (b-sqrt(distanceInSphere))/2.0;
+		
+		if(distance > 0.0){
+			return distance;
+		}else{
+			return -1.0;
+		}
+		
+	}
+	
+	float intersectPlane(in Ray ray, Plane plane)
+	{
+		float distance = (plane.base-ray.origin.y)/ray.direction.y;
+		if (distance>0.0){
+			return distance;
+		}else{
+			return -1.0;
+		}
+	}
+	
+	bool sphereOcclusion(in Ray ray, in Sphere sphere)
+	{
+		vec3 distvec = sphere.center - ray.origin;
+		float proj = dot(distvec,ray.direction);
+		
+		float distsquare = dot(distvec,distvec);
+		float rsquare = sphere.radius * sphere.radius;
+		
+		if(proj < 0.0 && distsquare >rsquare){
+			return false;
+		}
+		float vsq = dot(ray.direction, ray.direction);
+		return (vsq*distsquare-proj*proj< rsquare*vsq);
+	}
+	
+	bool traceScene(in Ray ray, inout Hit hit)
+	{
+		hit.dist = INFINITY;
+		float dist;
+		dist =intersectPlane(ray, planes);
+		
+		if(dist>=0.0 && dist<=hit.dist){
+			vec3 pos = ray.origin+ray.direction*dist;
+			vec3 N = planes.normal;
+			hit.dist = dist;
+			hit.normal = N;
+			hit.material = planes.material;
+			hit.position = pos;
+		}
+		
+		for (int i=0; i<5; i++)
+		{
+			dist = intersectSphere(ray, spheres[i]);
+			if(dist>=0.0&& dist<=hit.dist)
+			{
+				vec3 pos = ray.origin+ray.direction*dist;
+				vec3 N = normalize(pos-spheres[i].center);
+				hit.dist = dist;
+				hit.normal = N;
+				hit.material = spheres[i].material;
+				hit.position = pos;
+			}
+		}
+		return hit.dist<INFINITY;
+	}
+	
+	
+	vec3 shadeHit(in Hit hit)
+	{
+		vec3 color = hit.material.color;
+	
+		vec3 lightDirection = normalize(pointLightPosition-hit.position);
+		
+		Ray r;
+		r.origin = hit.position + hit.normal * EPSILON;
+		r.direction = lightDirection;
+		
+		float lightWeighting = max(0.0, dot(lightDirection,hit.normal));
+		
+		for (int i = 0; i < 5; i++){
+			if (sphereOcclusion(r,spheres[i]))
+			{
+				lightWeighting = 0.0;
+				break;
+			}
+		}
+		color = 0.4*color+lightWeighting*pointLightColor;
+		return color;
+	}
+	
+	void main()
+	{
+		Ray ray = initRay();
+		initScene();
+		vec3 color;
+		
+		Hit hit;
+		if(traceScene(ray, hit)){
+			color = shadeHit(hit);
+			float decrease = 1.0;
+			for(int i = 0; i<MAX_DEPTH;i++){
+				
+				float r = hit.material.reflectance;
+				if(r>0.0)
+				{
+					vec3 R = reflect(ray.direction, hit.normal);
+					ray.origin = hit.position + EPSILON * hit.normal;
+					ray.direction = R;
+					ray.depth += 1;
+					
+					vec3 color2;
+					if (traceScene(ray, hit)){
+						color2 = shadeHit(hit)/sqrt(decrease);
+					}else{
+						color2 = vec3(0.0,0.0,0.0);
+					}
+					
+					color =mix(color, color2, r);
+				}
+				decrease+=1.0;
+			}
+		}else{
+			color = vec3(1.0,1.0,1.0);
+		}
+		gl_FragColor = vec4(color,1.0);
+	}
+	
+</script>
+
+<script id="rayTracing-vertexShader" type="vertex">
+	attribute vec2 positionIn;
+	
+	varying vec3 rayDirection;
+	varying vec3 rayOrigin;
+	
+	uniform mat4 inverseMVP;
+	
+	void main()
+	{
+		vec2 projection_space = positionIn;
+		vec4 farPlane = inverseMVP * vec4(projection_space,1.0,1.0);
+		farPlane /= farPlane.w;
+		
+		vec4 nearPlane = inverseMVP * vec4(projection_space,-1.0,1.0);
+		nearPlane /= nearPlane.w;
+		
+		rayDirection = (farPlane.xyz - nearPlane.xyz);
+		rayOrigin = nearPlane.xyz;
+		
+		gl_Position = vec4(positionIn,0.0,1.0);
+	}
+</script>
+
+
+
+<script type="text/javascript">
+	var gl;
+	
+	function initGL(canvas) {
+		try {
+            gl = canvas.getContext("webgl");
+            gl.viewportWidth = canvas.width;
+            gl.viewportHeight = canvas.height;
+        } catch (e) {
+        }
+        if (!gl) {
+            alert("Could not initialise WebGL, sorry :-(");
+        }
+	}
+	
+	var shaderProgram;
+	
+	function getShader(gl, id) {
+		var shaderScript = document.getElementById(id);
+        if (!shaderScript) {
+            return null;
+        }
+
+        var str = "";
+        var k = shaderScript.firstChild;
+        while (k) {
+            if (k.nodeType == 3) {
+                str += k.textContent;
+            }
+            k = k.nextSibling;
+        }
+
+        var shader;
+        if (shaderScript.type == "fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        gl.shaderSource(shader, str);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+        return shader;
+	}
+	
+	function initShaders() {
+		var fragmentShader = getShader(gl, "rayTracing-fragmentShader");
+		var vertexShader = getShader(gl, "rayTracing-vertexShader");
+		
+		shaderProgram = gl.createProgram();
+		
+        gl.attachShader(shaderProgram, fragmentShader);
+		gl.attachShader(shaderProgram, vertexShader);
+        gl.linkProgram(shaderProgram);
+		gl.useProgram(shaderProgram);
+		
+		
+		if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+		
+		shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "positionIn");
+        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+		
+		shaderProgram.inversePMatrixUniform = gl.getUniformLocation(shaderProgram, "inverseMVP");
+		shaderProgram.pointLightPositionUniform = gl.getUniformLocation(shaderProgram, "pointLightPosition");
+		shaderProgram.pointLightColorUniform = gl.getUniformLocation(shaderProgram, "pointLightColor");
+		shaderProgram.sphere1Uniform = gl.getUniformLocation(shaderProgram, "sphere1");
+		shaderProgram.sphere2Uniform = gl.getUniformLocation(shaderProgram, "sphere2");
+		shaderProgram.sphere3Uniform = gl.getUniformLocation(shaderProgram, "sphere3");
+		shaderProgram.sphere4Uniform = gl.getUniformLocation(shaderProgram, "sphere4");
+	}
+	
+	var vertexBuffer;
+	
+	function initBuffer()
+	{
+		vertices = [
+			-1.0, 1.0,
+			-1.0, -1.0,
+			1.0, 1.0,
+			1.0, -1.0];
+		vertexBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+	}
+	
+	var pMatrix = mat4.create();
+	var inversePMatrix = mat4.create();
+	
+	function setMatrixUniforms()
+	{
+		gl.uniformMatrix4fv(shaderProgram.inversePMatrixUniform, false, inversePMatrix);
+		
+		gl.uniform3f(shaderProgram.pointLightPositionUniform, 0.0,2.0,-2.0);
+		
+		gl.uniform3f(shaderProgram.pointLightColorUniform, 1.0,1.0,1.0);
+		
+		time = new Date().getTime();
+		
+		gl.uniform3f(shaderProgram.sphere1Uniform, 0.0+0.5*Math.cos(time/1000),0.3,-3.0+0.5*Math.sin(time/1000));
+		gl.uniform3f(shaderProgram.sphere2Uniform, 0.0+0.5*Math.cos(time/1000+0.5*Math.PI),0.3,-3.0+0.5*Math.sin(time/1000+0.5*Math.PI));
+		gl.uniform3f(shaderProgram.sphere3Uniform, 0.0+0.5*Math.cos(time/1000+1.0*Math.PI),0.3,-3.0+0.5*Math.sin(time/1000+1.0*Math.PI));
+		gl.uniform3f(shaderProgram.sphere4Uniform, 0.0+0.5*Math.cos(time/1000+1.5*Math.PI),0.3,-3.0+0.5*Math.sin(time/1000+1.5*Math.PI));
+	}
+	
+	function drawScene()
+	{
+		gl.viewport(0.0, 0.0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		gl.useProgram(shaderProgram);
+		//mat4.identity(pMatrix);
+		mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+		mat4.inverse(pMatrix, inversePMatrix);
+		setMatrixUniforms();
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+		gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+		gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute , 2 ,gl.FLOAT,false,0,0);
+		
+		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+	}
+	
+	function tick()
+	{
+		requestAnimFrame(tick);
+        drawScene();
+	}
+	
+	function webGLStart() {
+        var canvas = document.getElementById("ICG-canvas");
+        initGL(canvas);
+        initShaders();
+		initBuffer();
+		
+        gl.clearColor(0.0, 0.2, 0.2, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+        tick();
+    }
+</script>
+
+</head>
+
+
+<body onload="webGLStart();">
+    <canvas id="ICG-canvas" style="border: none;" width="600" height="600"></canvas>
+    <br/>
+
+</body>
+
+</html>
