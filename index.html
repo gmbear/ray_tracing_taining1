@@ -30,7 +30,8 @@
 	
 	struct Material
 	{
-		vec3 	color;
+		vec3 	diffuseColor;
+		vec3    specColor;
 		float 	reflectance;
 	};
 	
@@ -63,6 +64,7 @@
 	const float EPSILON = 0.0001;
 	const float INFINITY = 100000.0;
 	const int MAX_DEPTH = 3;
+	const float shiness = 32.0;
 	
 	Ray initRay()
 	{
@@ -79,35 +81,41 @@
 	void initScene()
 	{
 	
-		spheres[0].center = vec3(0.0, 0.0, -3.0);
+		spheres[0].center = vec3(0.0, -0.3, -3.0);
 		spheres[0].radius = 0.3;
-		spheres[0].material.color = vec3(0.2, 1.0, 0.5);
-		spheres[0].material.reflectance = 0.4;
+		spheres[0].material.diffuseColor = vec3(0.0, 0.0, 0.0);
+		spheres[0].material.specColor = vec3(1.0,1.0,1.0);
+		spheres[0].material.reflectance = 1.0;
 	
 		spheres[1].center = sphere1;
 		spheres[1].radius = 0.15;
-		spheres[1].material.color = vec3(0.60, 0.0, 0.80);
-		spheres[1].material.reflectance = 0.2;
+		spheres[1].material.diffuseColor = vec3(0.60, 0.0, 0.80);
+		spheres[1].material.specColor = vec3(0.60, 0.0, 0.80);
+		spheres[1].material.reflectance = 0.5;
 
 		spheres[2].center = sphere2;
 		spheres[2].radius = 0.15;
-		spheres[2].material.color = vec3(0.0, 0.60, 0.8);
-		spheres[2].material.reflectance = 0.2;
+		spheres[2].material.diffuseColor = vec3(0.0, 0.60, 0.8);
+		spheres[2].material.specColor = vec3(0.0,0.6,0.8);
+		spheres[2].material.reflectance = 0.5;
 
 		spheres[3].center = sphere3;
 		spheres[3].radius = 0.15;
-		spheres[3].material.color = vec3(0.7, 0.8, 0.0);
-		spheres[3].material.reflectance = 0.2;
+		spheres[3].material.diffuseColor = vec3(0.7, 0.8, 0.0);
+		spheres[3].material.specColor =vec3(0.7, 0.8, 0.0);
+		spheres[3].material.reflectance = 0.5;
 
 		spheres[4].center = sphere4;
 		spheres[4].radius = 0.15;
-		spheres[4].material.color = vec3(0.7, 0.0, 0.0);
-		spheres[4].material.reflectance = 0.2;
+		spheres[4].material.diffuseColor = vec3(0.7, 0.0, 0.0);
+		spheres[4].material.specColor = vec3(0.7,0.0,0.0);
+		spheres[4].material.reflectance = 0.5;
 
 		planes.base = -0.7;
 		planes.normal = vec3(0.0,1.0,0.0);
-		planes.material.color = vec3(0.4,0.4,0.4);
-		planes.material.reflectance = 0.3;
+		planes.material.diffuseColor = vec3(0.4,0.4,0.4);
+		planes.material.specColor = vec3(0.4,0.4,0.4);
+		planes.material.reflectance = 0.0;
 	}
 	
 	float intersectSphere(in Ray ray, in Sphere sphere)
@@ -189,16 +197,17 @@
 	
 	vec3 shadeHit(in Hit hit)
 	{
-		vec3 color = hit.material.color;
+		vec3 color;
 	
 		vec3 lightDirection = normalize(pointLightPosition-hit.position);
-		
+		vec3 reflectDirection = reflect(-lightDirection, hit.normal);
+		vec3 eyeDirection = normalize(-hit.position);
 		Ray r;
 		r.origin = hit.position + hit.normal * EPSILON;
 		r.direction = lightDirection;
 		
 		float lightWeighting = max(0.0, dot(lightDirection,hit.normal));
-		
+		float speclightWeighting = pow(max(0.0,dot(reflectDirection,eyeDirection)),shiness);
 		for (int i = 0; i < 5; i++){
 			if (sphereOcclusion(r,spheres[i]))
 			{
@@ -206,7 +215,10 @@
 				break;
 			}
 		}
-		color = 0.2*color+lightWeighting*pointLightColor;
+		vec3 ambient = vec3(0.2,0.2,0.2);
+		vec3 diffuselighting = lightWeighting*pointLightColor;
+		vec3 speclighting = speclightWeighting*pointLightColor;
+		color = hit.material.diffuseColor*diffuselighting+hit.material.specColor*speclighting+hit.material.diffuseColor*ambient;
 		return color;
 	}
 	
@@ -222,28 +234,27 @@
 			float decrease = 1.0;
 			float refl=1.0;
 			for(int i = 0; i<MAX_DEPTH;i++){
-				float r = hit.material.reflectance;
-				if(r>0.0)
-				{
+					float r = hit.material.reflectance;
+				
 					vec3 R = reflect(ray.direction, hit.normal);
 					ray.origin = hit.position + EPSILON * hit.normal;
 					ray.direction = R;
 					ray.depth += 1;
-					
+					refl*=r;
 					vec3 color2;
 					if (traceScene(ray, hit)){
 						color2 = shadeHit(hit);
+						color =color+refl*color2 ;
 					}else{
-						color2 = vec3(0.0,0.0,0.0);
+						color2 = vec3(0.3,0.3,0.3);
+						color =color+refl*color2 ;
+						break;
 					}
 					
-					color =color+r*refl*color2/decrease ;
-				}
-				refl*=r;
-				decrease+=1.0;
+							
 			}
 		}else{
-			color = vec3(1.0,1.0,1.0);
+			color = vec3(0.3,0.3,0.3);
 		}
 		gl_FragColor = vec4(color,1.0);
 	}
@@ -378,7 +389,7 @@
 		
 		gl.uniform3f(shaderProgram.pointLightPositionUniform, 0.0,2.0,-2.0);
 		
-		gl.uniform3f(shaderProgram.pointLightColorUniform, 0.8,0.8,0.8);
+		gl.uniform3f(shaderProgram.pointLightColorUniform, 1.0,1.0,1.0);
 		
 		time = new Date().getTime();
 		
@@ -426,7 +437,7 @@
 
 
 <body onload="webGLStart();">
-    <canvas id="ICG-canvas" style="border: none;" width="600" height="600"></canvas>
+    <canvas id="ICG-canvas" style="border: none;" width="1200" height="800"></canvas>
     <br/>
 
 </body>
