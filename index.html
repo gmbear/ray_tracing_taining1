@@ -67,7 +67,7 @@
 		vec3 color;
 	};
 	
-	Light lights[49];
+	Light lights[36];
 	
 	const float EPSILON = 0.0001;
 	const float INFINITY = 100000.0;
@@ -156,18 +156,18 @@
 		planes[5].material.reflectance = 0.05;
 		
 		lights[0].position =pointLightPosition;
-		lights[0].color =pointLightColor/49.0;
+		lights[0].color =pointLightColor/36.0;
 		float j=0.0;
 		int timer=1;
-		for(int i=1; i<49; i++){
-			if(timer!=7){
-				lights[i].position=vec3(lights[i-1].position.x+0.6/6.0,lights[i-1].position.y,lights[i-1].position.z);
+		for(int i=1; i<36; i++){
+			if(timer!=6){
+				lights[i].position=vec3(lights[i-1].position.x+0.6/5.0,lights[i-1].position.y,lights[i-1].position.z);
 				timer+=1;
-			}else if(timer==7){
-				lights[i].position=vec3(lights[i-7].position.x,lights[i-7].position.y,lights[i-7].position.z+0.6/6.0);
-				timer-=6;
+			}else if(timer==6){
+				lights[i].position=vec3(lights[i-6].position.x,lights[i-6].position.y,lights[i-6].position.z+0.6/5.0);
+				timer-=5;
 			}
-			lights[i].color =pointLightColor/49.0;
+			lights[i].color =pointLightColor/36.0;
 		}
 		/*for(int i=1; i<=4;i++){
 			
@@ -300,7 +300,7 @@
 	
 	vec3 shadeHitAreaLight(in Ray ray, in Hit hit){
 		vec3 color_acc=vec3(0.0);
-		for(int i=0; i<49;i++){
+		for(int i=0; i<36;i++){
 			color_acc = color_acc+shadeHit(ray,hit,lights[i]);
 		}
 		return color_acc;
