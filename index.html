@@ -50,7 +50,7 @@
 		Material    material;
 	};
 	
-	Plane planes;
+	Plane planes[6];
 	
 	struct Sphere
 	{
@@ -61,11 +61,19 @@
 	
 	Sphere spheres[5];
 	
+	struct Light
+	{
+		vec3 position;
+		vec3 color;
+	};
+	
+	Light lights[49];
+	
 	const float EPSILON = 0.0001;
 	const float INFINITY = 100000.0;
 	const int MAX_DEPTH = 3;
 	const float shiness = 32.0;
-	
+	const float M_PI=3.1415926535897932384626433832795;
 	Ray initRay()
 	{
 		Ray r;
@@ -81,41 +89,100 @@
 	void initScene()
 	{
 	
-		spheres[0].center = vec3(0.0, -0.3, -3.0);
+		spheres[0].center = vec3(0.0, -0.4, -1.5);
 		spheres[0].radius = 0.3;
 		spheres[0].material.diffuseColor = vec3(0.0, 0.0, 0.0);
-		spheres[0].material.specColor = vec3(1.0,1.0,1.0);
+		spheres[0].material.specColor = vec3(0.6,0.6,0.6);
 		spheres[0].material.reflectance = 1.0;
 	
 		spheres[1].center = sphere1;
 		spheres[1].radius = 0.15;
 		spheres[1].material.diffuseColor = vec3(0.60, 0.0, 0.80);
 		spheres[1].material.specColor = vec3(0.60, 0.0, 0.80);
-		spheres[1].material.reflectance = 0.5;
+		spheres[1].material.reflectance = 0.1;
 
 		spheres[2].center = sphere2;
 		spheres[2].radius = 0.15;
 		spheres[2].material.diffuseColor = vec3(0.0, 0.60, 0.8);
 		spheres[2].material.specColor = vec3(0.0,0.6,0.8);
-		spheres[2].material.reflectance = 0.5;
+		spheres[2].material.reflectance = 0.1;
 
 		spheres[3].center = sphere3;
 		spheres[3].radius = 0.15;
 		spheres[3].material.diffuseColor = vec3(0.7, 0.8, 0.0);
 		spheres[3].material.specColor =vec3(0.7, 0.8, 0.0);
-		spheres[3].material.reflectance = 0.5;
+		spheres[3].material.reflectance = 0.1;
 
 		spheres[4].center = sphere4;
 		spheres[4].radius = 0.15;
 		spheres[4].material.diffuseColor = vec3(0.7, 0.0, 0.0);
 		spheres[4].material.specColor = vec3(0.7,0.0,0.0);
-		spheres[4].material.reflectance = 0.5;
+		spheres[4].material.reflectance = 0.1;
 
-		planes.base = -0.7;
-		planes.normal = vec3(0.0,1.0,0.0);
-		planes.material.diffuseColor = vec3(0.4,0.4,0.4);
-		planes.material.specColor = vec3(0.4,0.4,0.4);
-		planes.material.reflectance = 0.0;
+		planes[0].base = -0.7;
+		planes[0].normal = vec3(0.0,1.0,0.0);
+		planes[0].material.diffuseColor = vec3(0.8,0.8,0.8);
+		planes[0].material.specColor = vec3(0.0,0.0,0.0);
+		planes[0].material.reflectance = 0.1;
+		
+		planes[1].base = -1.0;
+		planes[1].normal = vec3(1.0,0.0,0.0);
+		planes[1].material.diffuseColor = vec3(0.8,0.0,0.0);
+		planes[1].material.specColor = vec3(0.0,0.0,0.0);
+		planes[1].material.reflectance = 0.1;
+		
+		planes[2].base = -1.0;
+		planes[2].normal = vec3(-1.0,0.0,0.0);
+		planes[2].material.diffuseColor = vec3(0.0,0.8,0.0);
+		planes[2].material.specColor = vec3(0.0,0.0,0.0);
+		planes[2].material.reflectance = 0.1;
+		
+		planes[3].base = -1.3;
+		planes[3].normal = vec3(0.0,-1.0,0.0);
+		planes[3].material.diffuseColor = vec3(1.0,1.0,1.0);
+		planes[3].material.specColor = vec3(0.0,0.0,0.0);
+		planes[3].material.reflectance = 0.1;
+		
+		planes[4].base = -2.5;
+		planes[4].normal = vec3(0.0,0.0,1.0);
+		planes[4].material.diffuseColor = vec3(0.0,0.0,0.0);
+		planes[4].material.specColor = vec3(0.65,0.65,0.65);
+		planes[4].material.reflectance = 1.0;
+		
+		planes[5].base = -2.0;
+		planes[5].normal = vec3(0.0,0.0,-1.0);
+		planes[5].material.diffuseColor = vec3(0.8,0.8,0.8);
+		planes[5].material.specColor = vec3(0.0,0.0,0.0);
+		planes[5].material.reflectance = 0.05;
+		
+		lights[0].position =pointLightPosition;
+		lights[0].color =pointLightColor/49.0;
+		float j=0.0;
+		int timer=1;
+		for(int i=1; i<49; i++){
+			if(timer!=7){
+				lights[i].position=vec3(lights[i-1].position.x+0.6/6.0,lights[i-1].position.y,lights[i-1].position.z);
+				timer+=1;
+			}else if(timer==7){
+				lights[i].position=vec3(lights[i-7].position.x,lights[i-7].position.y,lights[i-7].position.z+0.6/6.0);
+				timer-=6;
+			}
+			lights[i].color =pointLightColor/49.0;
+		}
+		/*for(int i=1; i<=4;i++){
+			
+			lights[i].position =vec3(0.3*cos(j*90.0/180.0*M_PI)+pointLightPosition.x,pointLightPosition.y,0.3*sin(j*90.0/180.0*M_PI)+pointLightPosition.z);
+			lights[i].color =pointLightColor/9.0;
+			j+=1.0;
+		}
+		j=0.0;
+		float bias=45.0;
+		float r2 = sqrt(2.0);
+		for(int i=1; i<=4;i++){
+			lights[i+4].position =vec3(0.3*r2*cos((j*90.0+bias)/180.0*M_PI)+pointLightPosition.x,pointLightPosition.y,0.3*r2*sin((j*90.0+bias)/180.0*M_PI)+pointLightPosition.z);
+			lights[i+4].color =pointLightColor/9.0;
+			j+=1.0;
+		}*/
 	}
 	
 	float intersectSphere(in Ray ray, in Sphere sphere)
@@ -138,9 +205,9 @@
 		
 	}
 	
-	float intersectPlane(in Ray ray, Plane plane)
+	float intersectPlane(in Ray ray, in Plane plane)
 	{
-		float distance = (plane.base-ray.origin.y)/ray.direction.y;
+		float distance = (plane.base-dot(ray.origin,plane.normal))/dot(ray.direction,plane.normal);
 		if (distance>0.0){
 			return distance;
 		}else{
@@ -148,7 +215,7 @@
 		}
 	}
 	
-	bool sphereOcclusion(in Ray ray, in Sphere sphere)
+	bool sphereOcclusion(in Ray ray, in Sphere sphere,in Light light)
 	{
 		vec3 distvec = sphere.center - ray.origin;
 		float proj = dot(distvec,ray.direction);
@@ -159,6 +226,13 @@
 		if(proj < 0.0 && distsquare >rsquare){
 			return false;
 		}
+		
+		vec3 lightDisVec = light.position-ray.origin;
+		float lightDis = dot(lightDisVec,lightDisVec);
+		if(lightDis<distsquare){
+			return false;
+		}
+		
 		float vsq = dot(ray.direction, ray.direction);
 		return (vsq*distsquare-proj*proj< rsquare*vsq);
 	}
@@ -167,16 +241,18 @@
 	{
 		hit.dist = INFINITY;
 		float dist;
-		dist =intersectPlane(ray, planes);
-		
-		if(dist>=0.0 && dist<=hit.dist){
-			vec3 pos = ray.origin+ray.direction*dist;
-			vec3 N = planes.normal;
-			hit.dist = dist;
-			hit.normal = N;
-			hit.material = planes.material;
-			hit.position = pos;
+		for(int i=0; i<6 ;i++){
+			dist =intersectPlane(ray, planes[i]);
+			if(dist>=0.0 && dist<=hit.dist){
+				vec3 pos = ray.origin+ray.direction*dist;
+				vec3 N = planes[i].normal;
+				hit.dist = dist;
+				hit.normal = N;
+				hit.material = planes[i].material;
+				hit.position = pos;
+			}
 		}
+			
 		
 		for (int i=0; i<5; i++)
 		{
@@ -195,13 +271,13 @@
 	}
 	
 	
-	vec3 shadeHit(in Hit hit)
+	vec3 shadeHit(in Ray ray, in Hit hit, in Light light)
 	{
 		vec3 color;
 	
-		vec3 lightDirection = normalize(pointLightPosition-hit.position);
+		vec3 lightDirection = normalize(light.position-hit.position);
 		vec3 reflectDirection = reflect(-lightDirection, hit.normal);
-		vec3 eyeDirection = normalize(-hit.position);
+		vec3 eyeDirection = normalize(ray.origin-hit.position);
 		Ray r;
 		r.origin = hit.position + hit.normal * EPSILON;
 		r.direction = lightDirection;
@@ -209,54 +285,103 @@
 		float lightWeighting = max(0.0, dot(lightDirection,hit.normal));
 		float speclightWeighting = pow(max(0.0,dot(reflectDirection,eyeDirection)),shiness);
 		for (int i = 0; i < 5; i++){
-			if (sphereOcclusion(r,spheres[i]))
+			if (sphereOcclusion(r,spheres[i],light))
 			{
 				lightWeighting = 0.0;
 				break;
 			}
 		}
-		vec3 ambient = vec3(0.2,0.2,0.2);
-		vec3 diffuselighting = lightWeighting*pointLightColor;
-		vec3 speclighting = speclightWeighting*pointLightColor;
-		color = hit.material.diffuseColor*diffuselighting+hit.material.specColor*speclighting+hit.material.diffuseColor*ambient;
+		//vec3 ambient = vec3(0.2,0.2,0.2);
+		vec3 diffuselighting = lightWeighting*light.color;
+		vec3 speclighting = speclightWeighting*light.color;
+		color = hit.material.diffuseColor*diffuselighting+hit.material.specColor*speclighting;
 		return color;
+	}
+	
+	vec3 shadeHitAreaLight(in Ray ray, in Hit hit){
+		vec3 color_acc=vec3(0.0);
+		for(int i=0; i<49;i++){
+			color_acc = color_acc+shadeHit(ray,hit,lights[i]);
+		}
+		return color_acc;
 	}
 	
 	void main()
 	{
 		Ray ray = initRay();
 		initScene();
-		vec3 color;
-		
+		vec3 color=vec3(0.0);
+		vec3 color2=vec3(0.0);
 		Hit hit;
-		if(traceScene(ray, hit)){
-			color = shadeHit(hit);
-			float decrease = 1.0;
-			float refl=1.0;
-			for(int i = 0; i<MAX_DEPTH;i++){
-					float r = hit.material.reflectance;
-				
-					vec3 R = reflect(ray.direction, hit.normal);
-					ray.origin = hit.position + EPSILON * hit.normal;
-					ray.direction = R;
-					ray.depth += 1;
-					refl*=r;
-					vec3 color2;
-					if (traceScene(ray, hit)){
-						color2 = shadeHit(hit);
-						color =color+refl*color2 ;
-					}else{
-						color2 = vec3(0.3,0.3,0.3);
-						color =color+refl*color2 ;
-						break;
-					}
-					
-							
+		float refl=1.0;
+		Hit hits[MAX_DEPTH];
+		int hit_no=0;
+		
+		
+		for(int i=0; i<MAX_DEPTH;i++){
+			if(traceScene(ray, hits[i])){
+				hit_no++;
+			}else{
+				break;
 			}
-		}else{
-			color = vec3(0.3,0.3,0.3);
+			vec3 R = reflect(ray.direction, hits[i].normal);
+			ray.origin = hits[i].position + EPSILON * hits[i].normal;
+			ray.direction = R;
+			ray.depth += 1;
 		}
-		gl_FragColor = vec4(color,1.0);
+		
+		Hit corruntHit;
+		Light light2;
+		Ray ray1;
+		
+		if(traceScene(ray, corruntHit)){
+			light2.color=shadeHitAreaLight(ray,corruntHit);
+			//light2.color=shadeHit(ray,corruntHit,lights[0]);	
+			light2.position=corruntHit.position;
+		}else{
+			light2.color=vec3(0.3,0.3,0.3);
+			light2.position=ray.origin+ray.direction*1.0;
+		}
+		ray = initRay();
+		vec3 color_test=vec3(0.3,0.3,0.3);
+		for(int i=MAX_DEPTH;i>0;i--){
+			if(hit_no==0){
+				break;
+			}
+			
+			if(i>1 && i<=hit_no){
+				ray1.direction=hits[i-1].position-hits[i-2].position;
+				ray1.origin=hits[i-2].position;
+				
+				color_test=shadeHitAreaLight(ray1, hits[i-1])+hits[i-1].material.reflectance*shadeHit(ray1,hits[i-1],light2);
+				light2.color=color_test;
+				light2.position=hits[i-1].position;
+			}else if(i==1){
+				ray1=ray;
+				color_test=shadeHitAreaLight(ray1, hits[i-1])+hits[i-1].material.reflectance*shadeHit(ray1,hits[i-1],light2);
+			}
+		}
+		/*
+		ray = initRay();
+		for(int i = 0; i<MAX_DEPTH;i++){
+			if (traceScene(ray, hit)){
+				color2 = shadeHit(ray,hit,lights);
+				color =color+refl*color2 ;
+			}else{
+				color2 = vec3(0.3,0.3,0.3);
+				color =color+refl*color2 ;
+				break;
+			}
+					
+			float r = hit.material.reflectance;
+				
+			vec3 R = reflect(ray.direction, hit.normal);
+			ray.origin = hit.position + EPSILON * hit.normal;
+			ray.direction = R;
+			ray.depth += 1;
+			refl*=r;	
+		}*/
+		gl_FragColor = vec4(color_test,1.0);
 	}
 	
 </script>
@@ -387,16 +512,16 @@
 	{
 		gl.uniformMatrix4fv(shaderProgram.inversePMatrixUniform, false, inversePMatrix);
 		
-		gl.uniform3f(shaderProgram.pointLightPositionUniform, 0.0,2.0,-2.0);
+		gl.uniform3f(shaderProgram.pointLightPositionUniform, -0.3,1.0,-1.8);
 		
 		gl.uniform3f(shaderProgram.pointLightColorUniform, 1.0,1.0,1.0);
 		
 		time = new Date().getTime();
 		
-		gl.uniform3f(shaderProgram.sphere1Uniform, 0.0+0.5*Math.cos(time/1000),0.3,-3.0+0.5*Math.sin(time/1000));
-		gl.uniform3f(shaderProgram.sphere2Uniform, 0.0+0.5*Math.cos(time/1000+0.5*Math.PI),0.3,-3.0+0.5*Math.sin(time/1000+0.5*Math.PI));
-		gl.uniform3f(shaderProgram.sphere3Uniform, 0.0+0.5*Math.cos(time/1000+1.0*Math.PI),0.3,-3.0+0.5*Math.sin(time/1000+1.0*Math.PI));
-		gl.uniform3f(shaderProgram.sphere4Uniform, 0.0+0.5*Math.cos(time/1000+1.5*Math.PI),0.3,-3.0+0.5*Math.sin(time/1000+1.5*Math.PI));
+		gl.uniform3f(shaderProgram.sphere1Uniform, 0.0+0.5*Math.cos(45/180*Math.PI),-0.55,-1.5+0.5*Math.sin(45/180*Math.PI));
+		gl.uniform3f(shaderProgram.sphere2Uniform, 0.0+0.5*Math.cos(45/180*Math.PI+0.5*Math.PI),-0.55,-1.5+0.5*Math.sin(45/180*Math.PI+0.5*Math.PI));
+		gl.uniform3f(shaderProgram.sphere3Uniform, 0.0+0.5*Math.cos(45/180*Math.PI+1.0*Math.PI),-0.55,-1.5+0.5*Math.sin(45/180*Math.PI+1.0*Math.PI));
+		gl.uniform3f(shaderProgram.sphere4Uniform, 0.0+0.5*Math.cos(45/180*Math.PI+1.5*Math.PI),-0.55,-1.5+0.5*Math.sin(45/180*Math.PI+1.5*Math.PI));
 	}
 	
 	function drawScene()
@@ -405,7 +530,7 @@
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 		gl.useProgram(shaderProgram);
 		//mat4.identity(pMatrix);
-		mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+		mat4.perspective(75, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
 		mat4.inverse(pMatrix, inversePMatrix);
 		setMatrixUniforms();
 		gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -429,7 +554,8 @@
 		
         gl.clearColor(0.0, 0.2, 0.2, 1.0);
         gl.enable(gl.DEPTH_TEST);
-        tick();
+        //tick();
+		drawScene();
     }
 </script>
 
